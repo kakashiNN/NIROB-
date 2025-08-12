@@ -3,35 +3,44 @@ const axios = require("axios");
 module.exports.config = {
   name: "flux",
   version: "2.0",
-  role: 2,
+  role: 0,
   author: "Dipto",
-  description: "flux Image Generator",
-  category: "Image gen",
+  description: "Flux Image Generator",
+  category: "IMAGE",
+  premium: true,
   guide: "{pn} [prompt] --ratio 1024x1024\n{pn} [prompt]",
   countDown: 15,
 };
 
-module.exports.onStart = async ({ message, event, args, api }) => {
+module.exports.onStart = async ({ event, args, api }) => {
+  const dipto = "https://www.noobs-api.rf.gd/dipto";
+
   try {
     const prompt = args.join(" ");
-    const waitMsg = await message.reply('wait baby <😘');
+    const [prompt2, ratio = "1:1"] = prompt.includes("--ratio")
+      ? prompt.split("--ratio").map(s => s.trim())
+      : [prompt, "1:1"];
+
+    const startTime = Date.now();
+    
+    const waitMessage = await api.sendMessage("Generating image, please wait... 😘", event.threadID);
     api.setMessageReaction("⌛", event.messageID, () => {}, true);
 
-    
-    const response = await axios.get(`https://www.noobs-api.rf.gd/dipto/flux?prompt=${encodeURIComponent(prompt)}`, {
-      responseType: 'stream',
-    });
+    const apiurl = `${dipto}/flux?prompt=${encodeURIComponent(prompt2)}&ratio=${encodeURIComponent(ratio)}`;
+    const response = await axios.get(apiurl, { responseType: "stream" });
+
+    const timeTaken = ((Date.now() - startTime) / 1000).toFixed(2);
 
     api.setMessageReaction("✅", event.messageID, () => {}, true);
-    message.unsend(waitMsg.messageID);
+    api.unsendMessage(waitMessage.messageID);
 
-    await message.reply({
-      body: `Here's your image`,
+    api.sendMessage({
+      body: `Here's your image (Generated in ${timeTaken} seconds)`,
       attachment: response.data,
-    });
-
+    }, event.threadID, event.messageID);
+    
   } catch (e) {
-    console.log("Flux Error:", e);
-    message.reply("Error: " + e.message);
+    console.error(e);
+    api.sendMessage("Error: " + e.message, event.threadID, event.messageID);
   }
 };
